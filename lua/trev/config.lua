@@ -1,0 +1,59 @@
+local M = {}
+
+--- @type trev.Config
+local defaults = {
+  trev_path = "trev",
+  width = 30,
+  float = {
+    width = 0.6,
+    height = 0.7,
+  },
+  auto_reveal = true,
+  adapter = "native",
+  handlers = {},
+  keybindings = {},
+}
+
+--- @type trev.Config|nil
+M._config = nil
+
+--- @param user_config? trev.UserConfig
+--- @return trev.Config
+function M.apply(user_config)
+  M._config = vim.tbl_deep_extend("force", {}, defaults, user_config or {})
+  M.validate(M._config)
+  return M._config
+end
+
+--- @return trev.Config
+function M.get()
+  if not M._config then
+    error("[trev] setup() has not been called")
+  end
+  return M._config
+end
+
+--- @param config trev.Config
+function M.validate(config)
+  vim.validate({
+    trev_path = { config.trev_path, "string" },
+    width = { config.width, "number" },
+    float = { config.float, "table" },
+    auto_reveal = { config.auto_reveal, "boolean" },
+    adapter = { config.adapter, "string" },
+    handlers = { config.handlers, "table" },
+    keybindings = { config.keybindings, "table" },
+  })
+
+  vim.validate({
+    ["float.width"] = { config.float.width, "number" },
+    ["float.height"] = { config.float.height, "number" },
+  })
+end
+
+--- @return trev.Config
+function M.defaults()
+  return vim.deepcopy(defaults)
+end
+
+return M
