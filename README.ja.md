@@ -4,6 +4,8 @@
 
 [trev](https://github.com/nabekou29/trev) の Neovim プラグイン — 高速なファイルツリーエクスプローラー。
 
+![screenshot](screenshot.png)
+
 trev 本体の詳細（機能、インストール、デーモンの設定など）については [trev リポジトリ](https://github.com/nabekou29/trev) を参照してください。
 
 ## 必要要件

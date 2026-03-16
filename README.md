@@ -4,6 +4,8 @@
 
 Neovim plugin for [trev](https://github.com/nabekou29/trev) — a fast file tree explorer.
 
+![screenshot](screenshot.png)
+
 For detailed information about trev itself (features, installation, configuration of the daemon), please refer to the [trev repository](https://github.com/nabekou29/trev).
 
 ## Requirements
