@@ -18,7 +18,26 @@ trev 本体の詳細（機能、インストール、デーモンの設定など
 ```lua
 {
   "nabekou29/trev.nvim",
-  opts = {},
+  keys = {
+    { "<leader>e", function() require("trev").show() end, desc = "Show trev" },
+    { "<leader>E", function() require("trev").show({ position = "float" }) end, desc = "Show trev (float)" },
+  },
+  opts = {
+    width = 60,
+    keybindings = {
+      -- chowcho.nvim を使ってウィンドウを選択してファイルを開く
+      -- ["<S-CR>"] = {
+      --   action = function(event)
+      --     require("chowcho").run(function(winid)
+      --       vim.api.nvim_set_current_win(winid)
+      --       vim.cmd("edit " .. vim.fn.fnameescape(event.current_file))
+      --     end)
+      --   end,
+      --   context = { "file" },
+      --   description = "Open with window picker",
+      -- },
+    },
+  },
 }
 ```
 
@@ -37,7 +56,9 @@ require("trev").setup({
   },
   -- BufEnter 時に現在のバッファをツリーで自動表示
   auto_reveal = true,
-  -- キーバインディング定義
+  -- デフォルトキーバインドを有効にする (<CR> = open, q = quit)
+  default_keybindings = true,
+  -- キーバインディング定義 (false を設定するとデフォルトを無効化)
   keybindings = {},
 })
 ```
@@ -92,35 +113,40 @@ trev.quit()                            -- デーモンを終了
 ### キーマップ
 
 ```lua
-vim.keymap.set("n", "<leader>e", function() require("trev").toggle() end)
-vim.keymap.set("n", "<leader>E", function() require("trev").toggle({ position = "float" }) end)
+vim.keymap.set("n", "<leader>e", function() require("trev").show() end)
+vim.keymap.set("n", "<leader>E", function() require("trev").show({ position = "float" }) end)
 ```
 
 ## キーバインディング
 
 キーバインディングは **trev ツリー内** でのキー操作を定義します。
 
-### 定義済みアクション
+### デフォルトキーバインド
+
+| キー   | アクション | 説明             |
+| ------ | ---------- | ---------------- |
+| `<CR>` | `open`     | ファイルを開く   |
+| `q`    | `quit`     | trev を終了      |
+
+デフォルトキーバインドを個別に無効化するには `false` を設定します:
 
 ```lua
-local actions = require("trev").actions
-
 require("trev").setup({
   keybindings = {
-    ["<CR>"] = actions.open(),
-    ["e"] = actions.toggle_expand(),
-    ["q"] = actions.quit(),
+    ["q"] = false, -- デフォルトの quit を無効化
   },
 })
 ```
 
-| アクション       | 説明                         | デフォルトコンテキスト |
-| ---------------- | ---------------------------- | ---------------------- |
-| `open`           | Neovim でファイルを開く      | `file`                 |
-| `toggle_expand`  | ディレクトリの展開/折りたたみ | `directory`           |
-| `quit`           | trev を終了                  | `universal`            |
+すべてのデフォルトキーバインドを無効化するには:
 
-### カスタムコールバック
+```lua
+require("trev").setup({
+  default_keybindings = false,
+})
+```
+
+### カスタムキーバインド
 
 ```lua
 require("trev").setup({

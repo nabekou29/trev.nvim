@@ -1,6 +1,34 @@
+local actions = require("trev.actions")
+
 local M = {}
 
 local KB_METHOD_PREFIX = "nvim._kb."
+
+--- Default keybindings.
+--- @type table<string, trev.KeybindingValue>
+local default_keybindings = {
+  ["<CR>"] = actions.open(),
+  ["q"] = actions.quit(),
+}
+
+--- Merge default keybindings with user keybindings.
+--- Set a key to `false` in user keybindings to disable a default.
+--- @param use_defaults boolean
+--- @param user_keybindings table<string, trev.KeybindingValue|false>
+--- @return table<string, trev.KeybindingValue>
+function M.merge(use_defaults, user_keybindings)
+  local base = use_defaults and vim.deepcopy(default_keybindings) or {}
+
+  for key, value in pairs(user_keybindings) do
+    if value == false then
+      base[key] = nil
+    else
+      base[key] = value
+    end
+  end
+
+  return base
+end
 
 --- Check if a value is a predefined trev.Action.
 --- @param v any

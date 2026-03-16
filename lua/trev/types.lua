@@ -9,9 +9,10 @@
 --- @field width number side panel width (columns)
 --- @field float trev.FloatConfig floating window config
 --- @field auto_reveal boolean auto reveal on BufEnter
+--- @field default_keybindings boolean enable default keybindings
 --- @field adapter string terminal backend ("native")
 --- @field handlers table<string, fun(params: table)> custom notification handlers
---- @field keybindings table<string, trev.KeybindingValue> keybinding definitions
+--- @field keybindings table<string, trev.KeybindingValue|false> keybinding definitions (false to disable)
 
 --- @class trev.FloatConfig
 --- @field width number fraction of editor width (0.0-1.0) or absolute columns
@@ -22,9 +23,10 @@
 --- @field width? number
 --- @field float? trev.FloatConfig
 --- @field auto_reveal? boolean
+--- @field default_keybindings? boolean
 --- @field adapter? string
 --- @field handlers? table<string, fun(params: table)>
---- @field keybindings? table<string, trev.KeybindingValue>
+--- @field keybindings? table<string, trev.KeybindingValue|false>
 
 --- @class trev.State
 --- @field handle trev.AdapterHandle|nil terminal handle

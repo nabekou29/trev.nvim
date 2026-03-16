@@ -22,8 +22,11 @@ function M.setup(opts)
   config.apply(opts)
   local cfg = config.get()
 
+  -- Merge default keybindings with user keybindings
+  local merged_keybindings = keybindings.merge(cfg.default_keybindings, cfg.keybindings)
+
   -- Normalize keybindings and register handlers
-  binding_entries = keybindings.normalize(cfg.keybindings)
+  binding_entries = keybindings.normalize(merged_keybindings)
   keybindings.register_handlers(binding_entries, cfg.handlers)
 
   -- Resolve adapter
