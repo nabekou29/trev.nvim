@@ -3,7 +3,7 @@ local M = {}
 --- @type trev.Config
 local defaults = {
   trev_path = "trev",
-  width = 30,
+  width = 60,
   float = {
     width = 0.6,
     height = 0.7,
