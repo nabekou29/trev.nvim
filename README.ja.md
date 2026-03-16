@@ -18,6 +18,7 @@ trev 本体の詳細（機能、インストール、デーモンの設定など
 ```lua
 {
   "nabekou29/trev.nvim",
+  cmd = { "Trev" },
   keys = {
     { "<leader>e", function() require("trev").show() end, desc = "Show trev" },
     { "<leader>E", function() require("trev").show({ position = "float" }) end, desc = "Show trev (float)" },
