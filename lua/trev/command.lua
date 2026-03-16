@@ -58,8 +58,7 @@ function M.register()
     elseif action == "quit" then
       trev.quit()
     elseif action == "reveal" then
-      trev.focus({ position = parsed.position, dir = parsed.dir })
-      trev.reveal(parsed.reveal_path)
+      trev.focus({ position = parsed.position, dir = parsed.dir, reveal = true, reveal_path = parsed.reveal_path })
     elseif action == "focus" then
       trev.focus({ position = parsed.position, dir = parsed.dir })
     elseif action == "show" then

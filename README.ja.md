@@ -57,6 +57,9 @@ require("trev").setup({
   },
   -- BufEnter 時に現在のバッファをツリーで自動表示
   auto_reveal = true,
+  -- ターミナルアダプター: "auto" | "toggleterm" | "snacks" | "native"
+  -- "auto" は snacks > toggleterm > native の優先順で自動選択
+  adapter = "auto",
   -- デフォルトキーバインドを有効にする (<CR> = open, q = quit)
   default_keybindings = true,
   -- キーバインディング定義 (false を設定するとデフォルトを無効化)

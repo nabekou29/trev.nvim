@@ -83,7 +83,8 @@ end
 --- @return trev.AdapterHandle|nil
 function NativeAdapter:open_panel(cmd, opts)
   -- Create vsplit on the left
-  vim.cmd("topleft " .. (opts.width or 30) .. "vsplit")
+  local split_cmd = (opts.side == "right") and "botright" or "topleft"
+  vim.cmd(split_cmd .. " " .. (opts.width or 30) .. "vsplit")
   local win = vim.api.nvim_get_current_win()
   local buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_win_set_buf(win, buf)
@@ -192,7 +193,8 @@ function NativeAdapter:show(handle, mode, opts)
     handle.win = win
   else
     -- Panel mode: vsplit on the left
-    vim.cmd("topleft " .. (opts.width or 30) .. "vsplit")
+    local split_cmd = (opts.side == "right") and "botright" or "topleft"
+  vim.cmd(split_cmd .. " " .. (opts.width or 30) .. "vsplit")
     local win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, handle.buf)
     setup_panel_win(win)

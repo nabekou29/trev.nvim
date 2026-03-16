@@ -3,6 +3,7 @@ local M = {}
 --- @type trev.Config
 local defaults = {
   trev_path = "trev",
+  side = "left",
   width = 60,
   float = {
     width = 0.6,
@@ -10,7 +11,7 @@ local defaults = {
   },
   auto_reveal = true,
   default_keybindings = true,
-  adapter = "native",
+  adapter = "auto",
   handlers = {},
   keybindings = {},
 }
@@ -38,6 +39,7 @@ end
 function M.validate(config)
   vim.validate({
     trev_path = { config.trev_path, "string" },
+    side = { config.side, "string" },
     width = { config.width, "number" },
     float = { config.float, "table" },
     auto_reveal = { config.auto_reveal, "boolean" },

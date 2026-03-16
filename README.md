@@ -57,6 +57,9 @@ require("trev").setup({
   },
   -- Automatically reveal the current buffer in the tree on BufEnter
   auto_reveal = true,
+  -- Terminal adapter: "auto" | "toggleterm" | "snacks" | "native"
+  -- "auto" uses snacks > toggleterm > native (in order of availability)
+  adapter = "auto",
   -- Enable default keybindings (<CR> = open, q = quit)
   default_keybindings = true,
   -- Keybinding definitions (set to false to disable a default keybinding)

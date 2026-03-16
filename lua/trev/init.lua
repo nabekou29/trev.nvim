@@ -82,6 +82,7 @@ local function start_instance(mode, dir, reveal_path)
 
   --- @type trev.AdapterOpts
   local opts = {
+    side = cfg.side,
     width = cfg.width,
     float = cfg.float,
     on_exit = function(exit_code)
@@ -283,7 +284,7 @@ local function handle_dir_change(dir, callback)
 end
 
 --- Toggle trev visibility.
---- @param opts? { position?: trev.Position, dir?: string }
+--- @param opts? { position?: trev.Position, dir?: string, reveal?: boolean }
 function M.toggle(opts)
   opts = opts or {}
   local s = state.get()
@@ -295,7 +296,8 @@ function M.toggle(opts)
 
     -- Not alive: start new instance
     if not s_now.handle or not adapter:is_alive(s_now.handle) then
-      local current_file = vim.api.nvim_buf_get_name(0)
+      local should_reveal = opts.reveal ~= nil and opts.reveal or (opts.reveal == nil and config.get().auto_reveal)
+      local current_file = should_reveal and vim.api.nvim_buf_get_name(0) or nil
       start_instance(target_mode, dir, current_file)
       return
     end
@@ -313,7 +315,7 @@ function M.toggle(opts)
         if target_mode == "float" then
           s_now.prev_win = vim.api.nvim_get_current_win()
         end
-        adapter:show(s_now.handle, target_mode, { width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+        adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
         s_now.mode = target_mode
         if target_mode == "float" then
           M._setup_float_auto_close()
@@ -328,7 +330,7 @@ function M.toggle(opts)
     if target_mode == "float" then
       s_now.prev_win = vim.api.nvim_get_current_win()
     end
-    adapter:show(s_now.handle, target_mode, { width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+    adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
     s_now.mode = target_mode
     if target_mode == "float" then
       M._setup_float_auto_close()
@@ -338,7 +340,7 @@ function M.toggle(opts)
 end
 
 --- Show and focus trev (does not toggle).
---- @param opts? { position?: trev.Position, dir?: string }
+--- @param opts? { position?: trev.Position, dir?: string, reveal?: boolean, reveal_path?: string }
 function M.focus(opts)
   opts = opts or {}
   local s = state.get()
@@ -350,9 +352,15 @@ function M.focus(opts)
 
     -- Not alive: start new instance
     if not s_now.handle or not adapter:is_alive(s_now.handle) then
-      local current_file = vim.api.nvim_buf_get_name(0)
-      start_instance(target_mode, dir, current_file)
+      local should_reveal = opts.reveal ~= nil and opts.reveal or (opts.reveal == nil and config.get().auto_reveal)
+      local reveal_path = opts.reveal_path or (should_reveal and vim.api.nvim_buf_get_name(0) or nil)
+      start_instance(target_mode, dir, reveal_path)
       return
+    end
+
+    -- Reveal via IPC if requested (already running)
+    if opts.reveal_path or opts.reveal then
+      M.reveal(opts.reveal_path)
     end
 
     -- Visible
@@ -367,7 +375,7 @@ function M.focus(opts)
         if target_mode == "float" then
           s_now.prev_win = vim.api.nvim_get_current_win()
         end
-        adapter:show(s_now.handle, target_mode, { width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+        adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
         s_now.mode = target_mode
         adapter:focus(s_now.handle)
       end
@@ -379,14 +387,14 @@ function M.focus(opts)
     if target_mode == "float" then
       s_now.prev_win = vim.api.nvim_get_current_win()
     end
-    adapter:show(s_now.handle, target_mode, { width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+    adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
     s_now.mode = target_mode
     adapter:focus(s_now.handle)
   end)
 end
 
 --- Show trev without moving focus.
---- @param opts? { position?: trev.Position, dir?: string }
+--- @param opts? { position?: trev.Position, dir?: string, reveal?: boolean }
 function M.show(opts)
   opts = opts or {}
   local s = state.get()
@@ -398,7 +406,8 @@ function M.show(opts)
 
     -- Not alive: start new instance (will get focus due to terminal)
     if not s_now.handle or not adapter:is_alive(s_now.handle) then
-      local current_file = vim.api.nvim_buf_get_name(0)
+      local should_reveal = opts.reveal ~= nil and opts.reveal or (opts.reveal == nil and config.get().auto_reveal)
+      local current_file = should_reveal and vim.api.nvim_buf_get_name(0) or nil
       start_instance(target_mode, dir, current_file)
       return
     end
@@ -418,7 +427,7 @@ function M.show(opts)
     if target_mode == "float" then
       s_now.prev_win = vim.api.nvim_get_current_win()
     end
-    adapter:show(s_now.handle, target_mode, { width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+    adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
     s_now.mode = target_mode
     if target_mode == "float" then
       M._setup_float_auto_close()

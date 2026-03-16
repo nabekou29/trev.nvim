@@ -2,10 +2,12 @@
 --- This module contains only annotations and returns an empty table.
 
 --- @alias trev.Position "panel" | "float"
+--- @alias trev.Side "left" | "right"
 --- @alias trev.OpenAction "edit" | "split" | "vsplit" | "tabedit"
 
 --- @class trev.Config
 --- @field trev_path string trev binary path
+--- @field side trev.Side panel side ("left" or "right")
 --- @field width number side panel width (columns)
 --- @field float trev.FloatConfig floating window config
 --- @field auto_reveal boolean auto reveal on BufEnter
@@ -20,6 +22,7 @@
 
 --- @class trev.UserConfig
 --- @field trev_path? string
+--- @field side? trev.Side
 --- @field width? number
 --- @field float? trev.FloatConfig
 --- @field auto_reveal? boolean
@@ -51,6 +54,7 @@
 --- @field focus fun(self: trev.Adapter, handle: trev.AdapterHandle)
 
 --- @class trev.AdapterOpts
+--- @field side? trev.Side panel side
 --- @field width? number panel width
 --- @field float? trev.FloatConfig float dimensions
 --- @field on_exit fun(exit_code: number)
