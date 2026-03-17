@@ -1,11 +1,11 @@
-local config = require("trev.config")
-local state = require("trev.state")
-local ipc = require("trev.ipc")
-local socket = require("trev.socket")
-local handlers = require("trev.handlers")
-local keybindings = require("trev.keybindings")
-local command = require("trev.command")
 local adapter_factory = require("trev.adapter")
+local command = require("trev.command")
+local config = require("trev.config")
+local handlers = require("trev.handlers")
+local ipc = require("trev.ipc")
+local keybindings = require("trev.keybindings")
+local socket = require("trev.socket")
+local state = require("trev.state")
 
 local M = {}
 
@@ -59,8 +59,8 @@ local function build_cmd(dir, reveal_path)
     table.insert(cmd, reveal_path)
   end
 
-  -- Config override for keybindings
-  local override_path = keybindings.write_override_file(binding_entries)
+  -- Config override for keybindings and preview
+  local override_path = keybindings.write_override_file(binding_entries, cfg.neovim_preview)
   if override_path then
     s.override_path = override_path
     table.insert(cmd, "--config-override")
@@ -145,8 +145,14 @@ function M._connect_ipc(socket_path)
   ipc.connect(socket_path, handlers.handle_message, function()
     -- on disconnect
     M._on_ipc_disconnect()
+  end, function()
+    -- on connect
+    M._on_ipc_connect()
   end)
+end
 
+--- Called when IPC connection is established.
+function M._on_ipc_connect()
   -- Set up auto-reveal
   M._setup_auto_reveal()
 
@@ -158,6 +164,13 @@ function M._connect_ipc(socket_path)
       ipc.send_notification("reveal", { path = path })
     end
   end
+
+  -- Sync initial state (preview, etc.)
+  ipc.send_request("get_state", nil, function(result)
+    if result and result.preview then
+      require("trev.preview").on_preview(result.preview)
+    end
+  end)
 end
 
 --- Set up BufEnter autocmd for auto-reveal.
@@ -197,7 +210,13 @@ end
 --- @return boolean
 function M._is_special_buffer(buf)
   local buftype = vim.bo[buf].buftype
-  if buftype == "terminal" or buftype == "quickfix" or buftype == "help" or buftype == "nofile" or buftype == "prompt" then
+  if
+    buftype == "terminal"
+    or buftype == "quickfix"
+    or buftype == "help"
+    or buftype == "nofile"
+    or buftype == "prompt"
+  then
     return true
   end
   local filetype = vim.bo[buf].filetype
@@ -223,6 +242,9 @@ function M._on_daemon_exit(exit_code)
     state.reset()
     return
   end
+
+  -- Close preview overlay
+  require("trev.preview").hide()
 
   -- Normal exit: close window and clean up
   if adapter and s.handle then
@@ -315,7 +337,11 @@ function M.toggle(opts)
         if target_mode == "float" then
           s_now.prev_win = vim.api.nvim_get_current_win()
         end
-        adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+        adapter:show(
+          s_now.handle,
+          target_mode,
+          { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end }
+        )
         s_now.mode = target_mode
         if target_mode == "float" then
           M._setup_float_auto_close()
@@ -330,7 +356,11 @@ function M.toggle(opts)
     if target_mode == "float" then
       s_now.prev_win = vim.api.nvim_get_current_win()
     end
-    adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+    adapter:show(
+      s_now.handle,
+      target_mode,
+      { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end }
+    )
     s_now.mode = target_mode
     if target_mode == "float" then
       M._setup_float_auto_close()
@@ -375,7 +405,11 @@ function M.focus(opts)
         if target_mode == "float" then
           s_now.prev_win = vim.api.nvim_get_current_win()
         end
-        adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+        adapter:show(
+          s_now.handle,
+          target_mode,
+          { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end }
+        )
         s_now.mode = target_mode
         adapter:focus(s_now.handle)
       end
@@ -387,7 +421,11 @@ function M.focus(opts)
     if target_mode == "float" then
       s_now.prev_win = vim.api.nvim_get_current_win()
     end
-    adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+    adapter:show(
+      s_now.handle,
+      target_mode,
+      { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end }
+    )
     s_now.mode = target_mode
     adapter:focus(s_now.handle)
   end)
@@ -427,7 +465,11 @@ function M.show(opts)
     if target_mode == "float" then
       s_now.prev_win = vim.api.nvim_get_current_win()
     end
-    adapter:show(s_now.handle, target_mode, { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end })
+    adapter:show(
+      s_now.handle,
+      target_mode,
+      { side = cfg.side, width = cfg.width, float = cfg.float, on_exit = function() end, on_ready = function() end }
+    )
     s_now.mode = target_mode
     if target_mode == "float" then
       M._setup_float_auto_close()
@@ -441,6 +483,7 @@ function M.close()
   if not s.handle or not adapter then
     return
   end
+  require("trev.preview").hide()
   if adapter:is_visible(s.handle) then
     adapter:close(s.handle)
   end
@@ -505,6 +548,9 @@ function M._cleanup()
     ipc.send_request("quit", nil, nil)
     ipc.disconnect()
   end
+
+  -- Close preview overlay
+  require("trev.preview").hide()
 
   -- Force stop if still running
   if s.handle and s.handle.job_id then

@@ -64,6 +64,11 @@ require("trev").setup({
   adapter = "auto",
   -- デフォルトキーバインドを有効にする (<CR> = open, q = quit)
   default_keybindings = true,
+  -- Neovim プレビューオーバーレイ (treesitter ハイライト + diagnostics)
+  neovim_preview = {
+    enabled = true,    -- Neovim プレビューオーバーレイを有効化
+    priority = "high", -- trev のプレビューコマンドの優先度 ("high"|"mid"|"low" または数値)
+  },
   -- キーバインディング定義 (false を設定するとデフォルトを無効化)
   keybindings = {},
 })

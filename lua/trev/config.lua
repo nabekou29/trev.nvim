@@ -12,6 +12,10 @@ local defaults = {
   auto_reveal = true,
   default_keybindings = true,
   adapter = "auto",
+  neovim_preview = {
+    enabled = true,
+    priority = "high",
+  },
   handlers = {},
   keybindings = {},
 }

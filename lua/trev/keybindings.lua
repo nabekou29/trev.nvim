@@ -115,11 +115,37 @@ function M.register_handlers(entries, handlers)
   end
 end
 
+--- Generate preview commands YAML section.
+--- @param preview_config trev.NeovimPreviewConfig
+--- @return string[]
+function M.generate_preview_yaml(preview_config)
+  if not preview_config or not preview_config.enabled then
+    return {}
+  end
+
+  local lines = {}
+  table.insert(lines, "preview:")
+  table.insert(lines, "  commands:")
+  -- Use `cat` so trev has the full file content for scroll tracking.
+  -- The output is hidden behind the Neovim preview overlay.
+  table.insert(lines, "    - name: Neovim")
+  table.insert(lines, '      command: cat')
+  table.insert(lines, "      pattern:")
+  table.insert(lines, '        - "*"')
+
+  local priority = preview_config.priority or "high"
+  table.insert(lines, "      priority: " .. tostring(priority))
+
+  return lines
+end
+
 --- Generate override YAML content for trev's --config-override.
 --- @param entries trev.BindingEntry[]
+--- @param preview_config? trev.NeovimPreviewConfig
 --- @return string yaml content
-function M.generate_yaml(entries)
-  if #entries == 0 then
+function M.generate_yaml(entries, preview_config)
+  local has_preview = preview_config and preview_config.enabled
+  if #entries == 0 and not has_preview then
     return ""
   end
 
@@ -170,18 +196,29 @@ function M.generate_yaml(entries)
     end
   end
 
+  -- Preview commands
+  if has_preview then
+    table.insert(lines, "")
+    local preview_lines = M.generate_preview_yaml(preview_config)
+    for _, line in ipairs(preview_lines) do
+      table.insert(lines, line)
+    end
+  end
+
   return table.concat(lines, "\n") .. "\n"
 end
 
 --- Write override YAML to a temp file and return the path.
 --- @param entries trev.BindingEntry[]
+--- @param preview_config? trev.NeovimPreviewConfig
 --- @return string|nil path to temp file
-function M.write_override_file(entries)
-  if #entries == 0 then
+function M.write_override_file(entries, preview_config)
+  local has_preview = preview_config and preview_config.enabled
+  if #entries == 0 and not has_preview then
     return nil
   end
 
-  local yaml = M.generate_yaml(entries)
+  local yaml = M.generate_yaml(entries, preview_config)
   local tmpfile = os.tmpname()
   local f = io.open(tmpfile, "w")
   if not f then

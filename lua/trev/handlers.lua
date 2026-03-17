@@ -41,6 +41,11 @@ function M._handle_notification(msg)
     return
   end
 
+  if method == "preview" then
+    require("trev.preview").on_preview(params)
+    return
+  end
+
   -- Custom handler (user-defined or keybinding auto-registered)
   local cfg = config.get()
   local handler = cfg.handlers[method]

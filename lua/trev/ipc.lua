@@ -6,7 +6,8 @@ local M = {}
 --- @param socket_path string
 --- @param on_message fun(msg: table) callback for decoded JSON-RPC messages
 --- @param on_disconnect fun() callback when connection is lost
-function M.connect(socket_path, on_message, on_disconnect)
+--- @param on_connect? fun() callback when connection is established
+function M.connect(socket_path, on_message, on_disconnect, on_connect)
   local s = state.get()
   local pipe = vim.uv.new_pipe(false)
   if not pipe then
@@ -26,6 +27,9 @@ function M.connect(socket_path, on_message, on_disconnect)
     vim.schedule(function()
       s.pipe = pipe
       s.socket_path = socket_path
+      if on_connect then
+        on_connect()
+      end
     end)
 
     pipe:read_start(function(read_err, data)

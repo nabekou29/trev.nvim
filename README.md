@@ -64,6 +64,11 @@ require("trev").setup({
   adapter = "auto",
   -- Enable default keybindings (<CR> = open, q = quit)
   default_keybindings = true,
+  -- Neovim preview overlay (treesitter highlighting + diagnostics)
+  neovim_preview = {
+    enabled = true,    -- enable Neovim preview overlay
+    priority = "high", -- priority for trev's preview command ("high"|"mid"|"low" or number)
+  },
   -- Keybinding definitions (set to false to disable a default keybinding)
   keybindings = {},
 })

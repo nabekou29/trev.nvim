@@ -5,6 +5,10 @@
 --- @alias trev.Side "left" | "right"
 --- @alias trev.OpenAction "edit" | "split" | "vsplit" | "tabedit"
 
+--- @class trev.NeovimPreviewConfig
+--- @field enabled boolean enable Neovim preview overlay
+--- @field priority? string|number priority ("high"|"mid"|"low" or number)
+
 --- @class trev.Config
 --- @field trev_path string trev binary path
 --- @field side trev.Side panel side ("left" or "right")
@@ -13,6 +17,7 @@
 --- @field auto_reveal boolean auto reveal on BufEnter
 --- @field default_keybindings boolean enable default keybindings
 --- @field adapter string terminal backend ("native")
+--- @field neovim_preview trev.NeovimPreviewConfig Neovim preview overlay config
 --- @field handlers table<string, fun(params: table)> custom notification handlers
 --- @field keybindings table<string, trev.KeybindingValue|false> keybinding definitions (false to disable)
 
@@ -28,6 +33,7 @@
 --- @field auto_reveal? boolean
 --- @field default_keybindings? boolean
 --- @field adapter? string
+--- @field preview? trev.NeovimPreviewConfig|boolean
 --- @field handlers? table<string, fun(params: table)>
 --- @field keybindings? table<string, trev.KeybindingValue|false>
 
