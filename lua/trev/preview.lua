@@ -1,9 +1,8 @@
 --- Experimental: Treesitter-highlighted preview overlay.
 --- Overlays a Neovim window on top of trev's built-in preview area
 --- to provide syntax highlighting via treesitter and diagnostics.
---- Uses bufadd/bufload to properly load buffers, enabling LSP
---- attachment and diagnostic display.
---- Supports image preview via snacks.image when available.
+--- Always uses scratch buffers to avoid rendering issues with
+--- background transparency in editor windows.
 ---
 --- Expected IPC notification from trev:
 ---   method: "preview"
@@ -19,25 +18,8 @@ local state = require("trev.state")
 
 local M = {}
 
---- Clean image placements on a buffer and re-attach for new content.
---- Mirrors snacks picker behavior: clean old placements, then attach new.
---- @param buf number buffer to clean
-local function clean_image_placements(buf)
-  pcall(function()
-    require("snacks.image.placement").clean(buf)
-  end)
-end
-
---- Re-attach snacks image rendering on a buffer.
---- @param buf number buffer to attach
-local function attach_image(buf)
-  pcall(function()
-    require("snacks.image.buf").attach(buf)
-  end)
-end
-
 --- @class trev.PreviewState
---- @field buf number|nil preview buffer
+--- @field buf number|nil preview buffer (scratch)
 --- @field win number|nil preview floating window
 --- @field path string|nil currently previewed file path
 
@@ -75,30 +57,97 @@ function M.on_preview(params)
   })
 end
 
---- Resolve a buffer for the given file path.
---- Uses bufadd/bufload to properly load the buffer, enabling LSP and diagnostics.
+--- Check if a file is an image that snacks can render.
+--- Uses snacks.image config if available, otherwise falls back to common formats.
+--- @param path string
+--- @return boolean
+local function is_image_file(path)
+  local ext = path:match("%.(%w+)$")
+  if not ext then
+    return false
+  end
+  ext = ext:lower()
+
+  -- Use snacks.image configured formats if available
+  local ok, snacks_image = pcall(require, "snacks.image")
+  if ok and snacks_image.config and snacks_image.config.formats then
+    for _, fmt in ipairs(snacks_image.config.formats) do
+      if fmt == ext then
+        return true
+      end
+    end
+    return false
+  end
+
+  -- Fallback
+  local image_exts = { "png", "jpg", "jpeg", "gif", "bmp", "webp", "tiff", "heic", "avif", "ico", "icns" }
+  for _, e in ipairs(image_exts) do
+    if e == ext then
+      return true
+    end
+  end
+  return false
+end
+
+--- Create a scratch buffer with file content and treesitter highlighting.
+--- Copies diagnostics from the real buffer if it's already loaded.
+--- For binary/image files, creates an empty buffer (snacks handles rendering).
 --- @param path string
 --- @return number|nil buf
-local function resolve_buf(path)
-  -- Suppress autocmds to prevent auto-reveal interference
-  local ei = vim.o.eventignore
-  vim.o.eventignore = "BufEnter,BufWinEnter,BufLeave,WinEnter,WinLeave"
+local function create_preview_buf(path)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = "wipe"
 
-  local buf = vim.fn.bufadd(path)
-  if buf == 0 then
-    vim.o.eventignore = ei
-    return nil
+  if not is_image_file(path) then
+    local ok, lines = pcall(vim.fn.readfile, path)
+    if not ok or not lines or #lines == 0 then
+      vim.api.nvim_buf_delete(buf, { force = true })
+      return nil
+    end
+
+    -- Sanitize lines: remove embedded newlines that nvim_buf_set_lines rejects
+    for i, line in ipairs(lines) do
+      if line:find("\n") then
+        lines[i] = line:gsub("\n", "")
+      end
+    end
+
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    vim.bo[buf].modifiable = false
+
+    -- Detect filetype and apply syntax highlighting
+    local ft = vim.filetype.match({ filename = path, buf = buf })
+    if ft then
+      vim.bo[buf].filetype = ft
+      if not pcall(vim.treesitter.start, buf, ft) then
+        vim.bo[buf].syntax = ft
+      end
+    end
+
+    -- Copy diagnostics from the real buffer if it exists
+    local real_buf = vim.fn.bufnr(path)
+    if real_buf ~= -1 and vim.api.nvim_buf_is_loaded(real_buf) then
+      local diagnostics = vim.diagnostic.get(real_buf)
+      if #diagnostics > 0 then
+        local ns = vim.api.nvim_create_namespace("trev_preview_diagnostics")
+        vim.diagnostic.set(ns, buf, diagnostics)
+      end
+    end
   end
 
-  if not vim.api.nvim_buf_is_loaded(buf) then
-    vim.fn.bufload(buf)
-  end
-
-  -- Keep out of buffer list
-  vim.bo[buf].buflisted = false
-
-  vim.o.eventignore = ei
   return buf
+end
+
+--- Release the current preview buffer.
+local function release_buf()
+  if preview.buf and vim.api.nvim_buf_is_valid(preview.buf) then
+    -- Clean snacks image placements before deleting
+    pcall(function()
+      require("snacks.image.placement").clean(preview.buf)
+    end)
+    vim.api.nvim_buf_delete(preview.buf, { force = true })
+  end
+  preview.buf = nil
 end
 
 --- Show or update the preview overlay.
@@ -107,16 +156,12 @@ end
 function M.show(path, area)
   local buf_changed = preview.path ~= path
 
-  -- Resolve buffer when path changes
+  -- Create new scratch buffer when path changes
   if buf_changed then
-    -- Clean old image placements before switching
-    if preview.buf and vim.api.nvim_buf_is_valid(preview.buf) then
-      clean_image_placements(preview.buf)
-    end
-
+    release_buf()
     preview.path = path
 
-    local buf = resolve_buf(path)
+    local buf = create_preview_buf(path)
     if not buf then
       M.hide()
       return
@@ -151,8 +196,7 @@ function M.show(path, area)
     zindex = 250,
   }
 
-  -- When buffer changes, close and recreate window so snacks can
-  -- properly clean up old image placements tied to the window.
+  -- When buffer changes, close and recreate window
   if buf_changed and preview.win and vim.api.nvim_win_is_valid(preview.win) then
     vim.api.nvim_win_close(preview.win, true)
     preview.win = nil
@@ -174,20 +218,15 @@ function M.show(path, area)
     vim.wo[preview.win].colorcolumn = ""
     vim.wo[preview.win].list = false
     vim.wo[preview.win].winblend = 0
-    vim.wo[preview.win].winhighlight = "Normal:TrevPreview,SignColumn:TrevPreview"
+    vim.wo[preview.win].winhighlight = "Normal:NormalFloat,SignColumn:NormalFloat"
     vim.o.eventignore = ei
-
-    -- Ensure TrevPreview has an opaque background
-    local normal_hl = vim.api.nvim_get_hl(0, { name = "Normal" })
-    local float_hl = vim.api.nvim_get_hl(0, { name = "NormalFloat" })
-    local bg = (normal_hl and normal_hl.bg) or (float_hl and float_hl.bg) or 0x1a1a1a
-    local fg = (normal_hl and normal_hl.fg) or (float_hl and float_hl.fg)
-    vim.api.nvim_set_hl(0, "TrevPreview", { fg = fg, bg = bg })
   end
 
-  -- Re-attach snacks image rendering for image files
-  if buf_changed then
-    attach_image(preview.buf)
+  -- Attach snacks image rendering for image files
+  if buf_changed and is_image_file(path) then
+    pcall(function()
+      require("snacks.image.buf").attach(preview.buf, { src = path })
+    end)
   end
 
   -- Scroll to position
@@ -203,16 +242,12 @@ end
 
 --- Hide the preview overlay.
 function M.hide()
-  -- Clean image placements before closing
-  if preview.buf and vim.api.nvim_buf_is_valid(preview.buf) then
-    clean_image_placements(preview.buf)
-  end
   if preview.win and vim.api.nvim_win_is_valid(preview.win) then
     vim.api.nvim_win_close(preview.win, true)
   end
   preview.win = nil
   preview.path = nil
-  preview.buf = nil
+  release_buf()
 end
 
 return M
