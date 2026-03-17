@@ -124,6 +124,12 @@ function M.generate_preview_yaml(preview_config)
   end
 
   local lines = {}
+
+  -- Avoid modal dialogs overlapping the Neovim preview overlay
+  table.insert(lines, "display:")
+  table.insert(lines, "  modal_avoid_preview: true")
+  table.insert(lines, "")
+
   table.insert(lines, "preview:")
   table.insert(lines, "  commands:")
   -- Use `cat` so trev has the full file content for scroll tracking.
