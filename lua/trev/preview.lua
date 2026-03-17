@@ -18,16 +18,24 @@ local state = require("trev.state")
 
 local M = {}
 
+local MAX_FILE_SIZE = 1024 * 1024 -- 1 MB
+local MAX_LINES = 5000
+local DEBOUNCE_MS = 16
+
 --- @class trev.PreviewState
---- @field buf number|nil preview buffer (scratch)
+--- @field buf number|nil preview buffer
 --- @field win number|nil preview floating window
 --- @field path string|nil currently previewed file path
+--- @field owns_buf boolean whether we created a scratch buffer
+--- @field pending_timer userdata|nil debounce timer
 
 --- @type trev.PreviewState
 local preview = {
   buf = nil,
   win = nil,
   path = nil,
+  owns_buf = false,
+  pending_timer = nil,
 }
 
 --- Handle preview notification from trev.
@@ -58,7 +66,6 @@ function M.on_preview(params)
 end
 
 --- Check if a file is an image that snacks can render.
---- Uses snacks.image config if available, otherwise falls back to common formats.
 --- @param path string
 --- @return boolean
 local function is_image_file(path)
@@ -68,7 +75,6 @@ local function is_image_file(path)
   end
   ext = ext:lower()
 
-  -- Use snacks.image configured formats if available
   local ok, snacks_image = pcall(require, "snacks.image")
   if ok and snacks_image.config and snacks_image.config.formats then
     for _, fmt in ipairs(snacks_image.config.formats) do
@@ -79,7 +85,6 @@ local function is_image_file(path)
     return false
   end
 
-  -- Fallback
   local image_exts = { "png", "jpg", "jpeg", "gif", "bmp", "webp", "tiff", "heic", "avif", "ico", "icns" }
   for _, e in ipairs(image_exts) do
     if e == ext then
@@ -89,65 +94,163 @@ local function is_image_file(path)
   return false
 end
 
---- Create a scratch buffer with file content and treesitter highlighting.
---- Copies diagnostics from the real buffer if it's already loaded.
---- For binary/image files, creates an empty buffer (snacks handles rendering).
+--- Try to find an already-loaded buffer for the path.
+--- Does NOT call bufadd/bufload to avoid transparency side effects.
 --- @param path string
 --- @return number|nil buf
-local function create_preview_buf(path)
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.bo[buf].bufhidden = "wipe"
+local function find_loaded_buf(path)
+  local existing = vim.fn.bufnr(path)
+  if existing ~= -1 and vim.api.nvim_buf_is_loaded(existing) then
+    return existing
+  end
+  return nil
+end
 
-  if not is_image_file(path) then
-    local ok, lines = pcall(vim.fn.readfile, path)
-    if not ok or not lines or #lines == 0 then
-      vim.api.nvim_buf_delete(buf, { force = true })
-      return nil
-    end
-
-    -- Sanitize lines: remove embedded newlines that nvim_buf_set_lines rejects
-    for i, line in ipairs(lines) do
-      if line:find("\n") then
-        lines[i] = line:gsub("\n", "")
-      end
-    end
-
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+--- Load file content into the preview scratch buffer.
+--- @param buf number scratch buffer
+--- @param path string file path
+--- @return boolean success
+local function load_file_content(buf, path)
+  -- Check file size
+  local stat = vim.uv.fs_stat(path)
+  if not stat then
+    return false
+  end
+  if stat.size > MAX_FILE_SIZE then
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "(file too large to preview)" })
     vim.bo[buf].modifiable = false
+    return true
+  end
 
-    -- Detect filetype and apply syntax highlighting
-    local ft = vim.filetype.match({ filename = path, buf = buf })
-    if ft then
-      vim.bo[buf].filetype = ft
-      if not pcall(vim.treesitter.start, buf, ft) then
-        vim.bo[buf].syntax = ft
-      end
-    end
+  local ok, lines = pcall(vim.fn.readfile, path, "", MAX_LINES)
+  if not ok or not lines or #lines == 0 then
+    return false
+  end
 
-    -- Copy diagnostics from the real buffer if it exists
-    local real_buf = vim.fn.bufnr(path)
-    if real_buf ~= -1 and vim.api.nvim_buf_is_loaded(real_buf) then
-      local diagnostics = vim.diagnostic.get(real_buf)
-      if #diagnostics > 0 then
-        local ns = vim.api.nvim_create_namespace("trev_preview_diagnostics")
-        vim.diagnostic.set(ns, buf, diagnostics)
-      end
+  -- Sanitize: remove embedded newlines that nvim_buf_set_lines rejects
+  for i, line in ipairs(lines) do
+    if line:find("\n") then
+      lines[i] = line:gsub("\n", "")
     end
   end
 
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+
+  -- Detect filetype and apply syntax highlighting
+  local ft = vim.filetype.match({ filename = path, buf = buf })
+  if ft then
+    vim.bo[buf].filetype = ft
+    if not pcall(vim.treesitter.start, buf, ft) then
+      vim.bo[buf].syntax = ft
+    end
+  end
+
+  return true
+end
+
+--- Reset the scratch buffer for new content.
+--- @param buf number
+local function reset_buf(buf)
+  if not vim.api.nvim_buf_is_valid(buf) then
+    return
+  end
+  pcall(vim.treesitter.stop, buf)
+  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+  vim.bo[buf].filetype = ""
+  vim.bo[buf].syntax = ""
+end
+
+--- Ensure the scratch buffer exists, creating it if needed.
+--- @return number buf
+local function ensure_buf()
+  if preview.buf and vim.api.nvim_buf_is_valid(preview.buf) then
+    return preview.buf
+  end
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = "hide"
+  preview.buf = buf
   return buf
 end
 
---- Release the current preview buffer.
+--- Clean up image placements on the preview buffer.
+local function clean_images()
+  if not preview.buf or not vim.api.nvim_buf_is_valid(preview.buf) then
+    return
+  end
+  pcall(function()
+    require("snacks.image.placement").clean(preview.buf)
+  end)
+end
+
+--- Release the preview buffer if we own it (scratch).
 local function release_buf()
-  if preview.buf and vim.api.nvim_buf_is_valid(preview.buf) then
-    -- Clean snacks image placements before deleting
-    pcall(function()
-      require("snacks.image.placement").clean(preview.buf)
-    end)
+  if preview.buf and vim.api.nvim_buf_is_valid(preview.buf) and preview.owns_buf then
     vim.api.nvim_buf_delete(preview.buf, { force = true })
   end
   preview.buf = nil
+  preview.owns_buf = false
+end
+
+--- Ensure the preview window exists with the given config.
+--- @param win_config table
+local function ensure_win(win_config)
+  if preview.win and vim.api.nvim_win_is_valid(preview.win) then
+    vim.api.nvim_win_set_config(preview.win, win_config)
+    -- Swap buffer if needed
+    if vim.api.nvim_win_get_buf(preview.win) ~= preview.buf then
+      vim.api.nvim_win_set_buf(preview.win, preview.buf)
+    end
+    return
+  end
+
+  preview.win = vim.api.nvim_open_win(preview.buf, false, win_config)
+  local ei = vim.o.eventignore
+  vim.o.eventignore = "OptionSet"
+  vim.wo[preview.win].number = true
+  vim.wo[preview.win].relativenumber = false
+  vim.wo[preview.win].signcolumn = "yes"
+  vim.wo[preview.win].foldcolumn = "0"
+  vim.wo[preview.win].wrap = false
+  vim.wo[preview.win].cursorline = false
+  vim.wo[preview.win].colorcolumn = ""
+  vim.wo[preview.win].list = false
+  vim.wo[preview.win].winblend = 0
+  vim.wo[preview.win].winhighlight = "Normal:NormalFloat,SignColumn:NormalFloat"
+  vim.o.eventignore = ei
+end
+
+--- Cancel any pending debounced preview update.
+local function cancel_pending()
+  if preview.pending_timer and not preview.pending_timer:is_closing() then
+    preview.pending_timer:stop()
+    preview.pending_timer:close()
+  end
+  preview.pending_timer = nil
+end
+
+--- Load content and apply highlighting (called after debounce).
+--- @param path string
+--- @param is_image boolean
+local function apply_content(path, is_image)
+  if not preview.buf or not vim.api.nvim_buf_is_valid(preview.buf) then
+    return
+  end
+  -- Ensure this is still the current path (not stale)
+  if preview.path ~= path then
+    return
+  end
+
+  if is_image then
+    pcall(function()
+      require("snacks.image.buf").attach(preview.buf, { src = path })
+    end)
+  else
+    load_file_content(preview.buf, path)
+  end
 end
 
 --- Show or update the preview overlay.
@@ -156,17 +259,36 @@ end
 function M.show(path, area)
   local buf_changed = preview.path ~= path
 
-  -- Create new scratch buffer when path changes
   if buf_changed then
+    cancel_pending()
+    clean_images()
     release_buf()
     preview.path = path
 
-    local buf = create_preview_buf(path)
-    if not buf then
-      M.hide()
-      return
+    -- Try to use already-loaded buffer directly (diagnostics, LSP, etc.)
+    local loaded = find_loaded_buf(path)
+    if loaded then
+      preview.buf = loaded
+      preview.owns_buf = false
+    else
+      local buf = ensure_buf()
+      reset_buf(buf)
+      preview.owns_buf = true
+
+      -- Debounce content loading to avoid treesitter race conditions
+      local is_image = is_image_file(path)
+      local timer = vim.uv.new_timer()
+      preview.pending_timer = timer
+      timer:start(DEBOUNCE_MS, 0, vim.schedule_wrap(function()
+        if timer == preview.pending_timer then
+          preview.pending_timer = nil
+        end
+        if not timer:is_closing() then
+          timer:close()
+        end
+        apply_content(path, is_image)
+      end))
     end
-    preview.buf = buf
   end
 
   -- Guard: buffer may have been wiped externally
@@ -183,8 +305,7 @@ function M.show(path, area)
   local width = math.max(1, math.min(area.width - 2, trev_width - col))
   local height = math.max(1, math.min(area.height - 2, trev_height - row))
 
-  -- Window config: overlay on trev window
-  local win_config = {
+  ensure_win({
     relative = "win",
     win = area.win,
     row = row,
@@ -194,54 +315,25 @@ function M.show(path, area)
     border = "none",
     focusable = false,
     zindex = 250,
-  }
+  })
 
-  -- When buffer changes, close and recreate window
-  if buf_changed and preview.win and vim.api.nvim_win_is_valid(preview.win) then
-    vim.api.nvim_win_close(preview.win, true)
-    preview.win = nil
-  end
-
-  if preview.win and vim.api.nvim_win_is_valid(preview.win) then
-    vim.api.nvim_win_set_config(preview.win, win_config)
-  else
-    preview.win = vim.api.nvim_open_win(preview.buf, false, win_config)
-    -- Suppress OptionSet autocmds to avoid errors from other plugins
-    local ei = vim.o.eventignore
-    vim.o.eventignore = "OptionSet"
-    vim.wo[preview.win].number = true
-    vim.wo[preview.win].relativenumber = false
-    vim.wo[preview.win].signcolumn = "yes"
-    vim.wo[preview.win].foldcolumn = "0"
-    vim.wo[preview.win].wrap = false
-    vim.wo[preview.win].cursorline = false
-    vim.wo[preview.win].colorcolumn = ""
-    vim.wo[preview.win].list = false
-    vim.wo[preview.win].winblend = 0
-    vim.wo[preview.win].winhighlight = "Normal:NormalFloat,SignColumn:NormalFloat"
-    vim.o.eventignore = ei
-  end
-
-  -- Attach snacks image rendering for image files
-  if buf_changed and is_image_file(path) then
-    pcall(function()
-      require("snacks.image.buf").attach(preview.buf, { src = path })
-    end)
-  end
-
-  -- Scroll to position
-  local line_count = vim.api.nvim_buf_line_count(preview.buf)
-  local target_line = math.min(area.scroll + 1, line_count)
-  pcall(vim.api.nvim_win_set_cursor, preview.win, { target_line, 0 })
-  if area.scroll > 0 then
-    vim.api.nvim_win_call(preview.win, function()
-      vim.cmd("normal! zt")
-    end)
+  -- Scroll to position (for non-debounced updates like scroll changes)
+  if not buf_changed then
+    local line_count = vim.api.nvim_buf_line_count(preview.buf)
+    local target_line = math.min(area.scroll + 1, line_count)
+    pcall(vim.api.nvim_win_set_cursor, preview.win, { target_line, 0 })
+    if area.scroll > 0 then
+      vim.api.nvim_win_call(preview.win, function()
+        vim.cmd("normal! zt")
+      end)
+    end
   end
 end
 
 --- Hide the preview overlay.
 function M.hide()
+  cancel_pending()
+  clean_images()
   if preview.win and vim.api.nvim_win_is_valid(preview.win) then
     vim.api.nvim_win_close(preview.win, true)
   end
