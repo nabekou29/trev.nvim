@@ -53,6 +53,8 @@ require("trev").setup({
   trev_path = "trev",
   -- Extra CLI arguments for trev (e.g. {"--config", "path/to/config.yml", "--icons"})
   args = {},
+  -- Side panel position: "left" | "right"
+  side = "left",
   -- Side panel width (columns)
   width = 60,
   -- Floating window dimensions (only applied for native adapter by default)
@@ -69,9 +71,11 @@ require("trev").setup({
   default_keybindings = true,
   -- Neovim preview overlay (treesitter highlighting + diagnostics)
   neovim_preview = {
-    enabled = true,    -- enable Neovim preview overlay
+    enabled = false,   -- enable Neovim preview overlay
     priority = "high", -- priority for trev's preview command ("high"|"mid"|"low" or number)
   },
+  -- Custom notification handlers
+  handlers = {},
   -- Keybinding definitions (set to false to disable a default keybinding)
   keybindings = {},
 })
@@ -131,6 +135,20 @@ vim.keymap.set("n", "<leader>e", function() require("trev").show() end)
 vim.keymap.set("n", "<leader>E", function() require("trev").show({ position = "float" }) end)
 ```
 
+## Neovim Preview
+
+The Neovim preview overlay renders file previews using Neovim's treesitter highlighting and diagnostics instead of trev's built-in preview. This is recommended for users who want syntax highlighting identical to their Neovim editor. Note that this feature may be slightly unstable.
+
+Disabled by default. To enable:
+
+```lua
+require("trev").setup({
+  neovim_preview = {
+    enabled = true,
+  },
+})
+```
+
 ## Keybindings
 
 Keybindings define how keys work **inside the trev tree**.
@@ -159,6 +177,29 @@ require("trev").setup({
   default_keybindings = false,
 })
 ```
+
+### Predefined Actions
+
+You can use predefined actions from `require("trev.actions")` in your keybindings:
+
+| Action            | Type   | Context   | Description            |
+| ----------------- | ------ | --------- | ---------------------- |
+| `open()`          | notify | file      | Open file in Neovim    |
+| `toggle_expand()` | action | directory | Toggle expand/collapse |
+| `quit()`          | action | universal | Quit trev              |
+
+```lua
+local actions = require("trev.actions")
+
+require("trev").setup({
+  keybindings = {
+    ["<CR>"] = { actions.open(), actions.toggle_expand() },
+    ["o"] = actions.open(),
+  },
+})
+```
+
+Each action can accept overrides: `actions.open({ context = { "universal" } })`.
 
 ### Custom Keybindings
 

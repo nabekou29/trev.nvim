@@ -53,6 +53,8 @@ require("trev").setup({
   trev_path = "trev",
   -- trev に渡す追加の CLI 引数 (例: {"--config", "path/to/config.yml", "--icons"})
   args = {},
+  -- サイドパネルの表示位置: "left" | "right"
+  side = "left",
   -- サイドパネルの幅（カラム数）
   width = 60,
   -- フローティングウィンドウのサイズ (native アダプターのみデフォルト適用)
@@ -69,9 +71,11 @@ require("trev").setup({
   default_keybindings = true,
   -- Neovim プレビューオーバーレイ (treesitter ハイライト + diagnostics)
   neovim_preview = {
-    enabled = true,    -- Neovim プレビューオーバーレイを有効化
+    enabled = false,   -- Neovim プレビューオーバーレイを有効化
     priority = "high", -- trev のプレビューコマンドの優先度 ("high"|"mid"|"low" または数値)
   },
+  -- カスタム通知ハンドラー
+  handlers = {},
   -- キーバインディング定義 (false を設定するとデフォルトを無効化)
   keybindings = {},
 })
@@ -131,6 +135,20 @@ vim.keymap.set("n", "<leader>e", function() require("trev").show() end)
 vim.keymap.set("n", "<leader>E", function() require("trev").show({ position = "float" }) end)
 ```
 
+## Neovim プレビュー
+
+Neovim プレビューオーバーレイは、trev 組み込みのプレビューの代わりに Neovim の treesitter ハイライトと diagnostics を使用してファイルプレビューを表示します。Neovim と同じシンタックスハイライトを求める方におすすめの機能です。ただし、動作が不安定になる場合があります。
+
+デフォルトでは無効です。有効にするには:
+
+```lua
+require("trev").setup({
+  neovim_preview = {
+    enabled = true,
+  },
+})
+```
+
 ## キーバインディング
 
 キーバインディングは **trev ツリー内** でのキー操作を定義します。
@@ -159,6 +177,29 @@ require("trev").setup({
   default_keybindings = false,
 })
 ```
+
+### 定義済みアクション
+
+`require("trev.actions")` の定義済みアクションをキーバインドで使用できます:
+
+| アクション         | タイプ | コンテキスト | 説明                    |
+| ------------------ | ------ | ------------ | ----------------------- |
+| `open()`           | notify | file         | Neovim でファイルを開く |
+| `toggle_expand()`  | action | directory    | 展開/折りたたみの切替   |
+| `quit()`           | action | universal    | trev を終了             |
+
+```lua
+local actions = require("trev.actions")
+
+require("trev").setup({
+  keybindings = {
+    ["<CR>"] = { actions.open(), actions.toggle_expand() },
+    ["o"] = actions.open(),
+  },
+})
+```
+
+各アクションはオーバーライドを受け付けます: `actions.open({ context = { "universal" } })`
 
 ### カスタムキーバインド
 
