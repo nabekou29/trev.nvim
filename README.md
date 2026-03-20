@@ -6,7 +6,7 @@ Neovim plugin for [trev](https://github.com/nabekou29/trev) — a fast file tree
 
 ![screenshot](screenshot.png)
 
-For detailed information about trev itself (features, installation, configuration of the daemon), please refer to the [trev repository](https://github.com/nabekou29/trev).
+For detailed information about trev itself (features, installation, configuration), please refer to the [trev repository](https://github.com/nabekou29/trev).
 
 ## Requirements
 
@@ -82,19 +82,19 @@ require("trev").setup({
 :Trev [action] [position] [dir=path] [reveal=path]
 ```
 
-| Action    | Description                 |
-| --------- | --------------------------- |
-| *(none)*  | Toggle visibility (default) |
-| `focus`   | Show and focus the tree     |
-| `show`    | Show without moving focus   |
-| `close`   | Hide the tree               |
-| `reveal`  | Reveal a file in the tree   |
-| `quit`    | Shut down the trev daemon   |
+| Action   | Description                 |
+| -------- | --------------------------- |
+| _(none)_ | Toggle visibility (default) |
+| `focus`  | Show and focus the tree     |
+| `show`   | Show without moving focus   |
+| `close`  | Hide the tree               |
+| `reveal` | Reveal a file in the tree   |
+| `quit`   | Shut down trev              |
 
-| Position  | Description            |
-| --------- | ---------------------- |
-| *(none)*  | Panel mode (default)   |
-| `float`   | Floating window mode   |
+| Position | Description          |
+| -------- | -------------------- |
+| _(none)_ | Panel mode (default) |
+| `float`  | Floating window mode |
 
 Examples:
 
@@ -115,10 +115,10 @@ trev.toggle()                          -- Toggle panel
 trev.toggle({ position = "float" })    -- Toggle floating window
 trev.focus()                           -- Show and focus
 trev.show()                            -- Show without focus
-trev.close()                           -- Hide (keep daemon alive)
+trev.close()                           -- Hide (keep process alive)
 trev.reveal()                          -- Reveal current buffer in tree
 trev.reveal("/path/to/file")           -- Reveal specific file
-trev.quit()                            -- Shut down daemon
+trev.quit()                            -- Shut down trev
 ```
 
 ### Keymaps
@@ -134,10 +134,10 @@ Keybindings define how keys work **inside the trev tree**.
 
 ### Default Keybindings
 
-| Key    | Action | Description     |
-| ------ | ------ | --------------- |
-| `<CR>` | `open` | Open file       |
-| `q`    | `quit` | Quit trev       |
+| Key    | Action | Description |
+| ------ | ------ | ----------- |
+| `<CR>` | `open` | Open file   |
+| `q`    | `quit` | Quit trev   |
 
 To disable a default keybinding, set it to `false`:
 
@@ -175,12 +175,12 @@ require("trev").setup({
 
 The callback receives a `trev.KeybindingEvent`:
 
-| Field          | Type    | Description              |
-| -------------- | ------- | ------------------------ |
-| `current_file` | string  | Absolute path of the item |
-| `dir`          | string  | Directory path            |
-| `name`         | string  | Basename                  |
-| `root`         | string  | Workspace root            |
+| Field          | Type    | Description                     |
+| -------------- | ------- | ------------------------------- |
+| `current_file` | string  | Absolute path of the item       |
+| `dir`          | string  | Directory path                  |
+| `name`         | string  | Basename                        |
+| `root`         | string  | Workspace root                  |
 | `is_dir`       | boolean | Whether the item is a directory |
 
 ## License

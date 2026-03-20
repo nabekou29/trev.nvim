@@ -2,7 +2,7 @@ local state = require("trev.state")
 
 local M = {}
 
---- Connect to trev daemon via Unix Domain Socket.
+--- Connect to trev via Unix Domain Socket.
 --- @param socket_path string
 --- @param on_message fun(msg: table) callback for decoded JSON-RPC messages
 --- @param on_disconnect fun() callback when connection is lost
@@ -72,7 +72,7 @@ function M.connect(socket_path, on_message, on_disconnect, on_connect)
   end)
 end
 
---- Disconnect from trev daemon.
+--- Disconnect from trev.
 function M.disconnect()
   local s = state.get()
   if s.pipe then

@@ -43,7 +43,7 @@ function M.setup(opts)
   })
 end
 
---- Build the command line for trev daemon.
+--- Build the command line for trev.
 --- @param dir string workspace directory
 --- @return string[]
 --- @param dir string
@@ -51,7 +51,7 @@ end
 local function build_cmd(dir, reveal_path)
   local cfg = config.get()
   local s = state.get()
-  local cmd = { cfg.trev_path, "--daemon", dir }
+  local cmd = { cfg.trev_path, "--ipc", dir }
 
   -- Reveal file on startup
   if reveal_path and reveal_path ~= "" then
@@ -86,7 +86,7 @@ local function start_instance(mode, dir, reveal_path)
     width = cfg.width,
     float = cfg.float,
     on_exit = function(exit_code)
-      M._on_daemon_exit(exit_code)
+      M._on_exit(exit_code)
     end,
     on_ready = function(handle)
       s.handle = handle
@@ -226,9 +226,9 @@ function M._is_special_buffer(buf)
   return false
 end
 
---- Handle trev daemon exit.
+--- Handle trev process exit.
 --- @param exit_code number
-function M._on_daemon_exit(exit_code)
+function M._on_exit(exit_code)
   local s = state.get()
   ipc.disconnect()
 
@@ -264,7 +264,7 @@ function M._on_daemon_exit(exit_code)
   state.reset()
 end
 
---- Handle IPC disconnect (socket closed without daemon exit).
+--- Handle IPC disconnect (socket closed without process exit).
 function M._on_ipc_disconnect()
   -- IPC is already disconnected via ipc.disconnect()
   -- Auto-reveal will no-op since is_connected() returns false
@@ -522,7 +522,7 @@ function M.reveal(path, callback)
   end
 end
 
---- Quit trev daemon (graceful shutdown).
+--- Quit trev (graceful shutdown).
 function M.quit()
   local s = state.get()
   if not s.handle then

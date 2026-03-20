@@ -167,21 +167,20 @@ function M.generate_yaml(entries, preview_config)
 
   local lines = {}
   table.insert(lines, "keybindings:")
-  table.insert(lines, "  daemon:")
 
   local contexts = vim.tbl_keys(by_context)
   table.sort(contexts)
 
   for _, ctx in ipairs(contexts) do
     local bindings = by_context[ctx]
-    table.insert(lines, "    " .. ctx .. ":")
-    table.insert(lines, "      bindings:")
+    table.insert(lines, "  " .. ctx .. ":")
+    table.insert(lines, "    bindings:")
     for _, b in ipairs(bindings) do
-      table.insert(lines, '        - key: "' .. b.key .. '"')
+      table.insert(lines, '      - key: "' .. b.key .. '"')
       if b.type == "notify" then
-        table.insert(lines, "          notify: " .. b.value)
+        table.insert(lines, "        notify: " .. b.value)
       elseif b.type == "action" then
-        table.insert(lines, "          action: " .. b.value)
+        table.insert(lines, "        action: " .. b.value)
       end
     end
   end
