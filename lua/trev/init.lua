@@ -12,7 +12,7 @@ local M = {}
 M.actions = require("trev.actions")
 
 --- Minimum required trev CLI version.
-local MIN_VERSION = "0.1.4"
+local MIN_VERSION = "0.1.5"
 
 --- @type trev.Adapter|nil
 local adapter = nil
