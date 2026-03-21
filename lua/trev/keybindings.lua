@@ -115,7 +115,7 @@ function M.register_handlers(entries, handlers)
   end
 end
 
---- Generate preview commands YAML section.
+--- Generate preview providers YAML section.
 --- @param preview_config trev.NeovimPreviewConfig
 --- @return string[]
 function M.generate_preview_yaml(preview_config)
@@ -131,7 +131,10 @@ function M.generate_preview_yaml(preview_config)
   table.insert(lines, "")
 
   table.insert(lines, "preview:")
-  table.insert(lines, "  commands:")
+  table.insert(lines, "  providers:")
+  -- Disable built-in Text provider (replaced by Neovim overlay)
+  table.insert(lines, "    - name: Text")
+  table.insert(lines, "      enabled: false")
   -- Use `cat` so trev has the full file content for scroll tracking.
   -- The output is hidden behind the Neovim preview overlay.
   table.insert(lines, "    - name: Neovim")
