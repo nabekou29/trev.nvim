@@ -3,6 +3,7 @@ local M = {}
 --- @type trev.Config
 local defaults = {
   trev_path = "trev",
+  args = {},
   side = "left",
   width = 60,
   float = {},
@@ -40,6 +41,7 @@ end
 function M.validate(config)
   vim.validate({
     trev_path = { config.trev_path, "string" },
+    args = { config.args, "table" },
     side = { config.side, "string" },
     width = { config.width, "number" },
     float = { config.float, "table" },

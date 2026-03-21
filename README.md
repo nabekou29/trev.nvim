@@ -50,6 +50,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 require("trev").setup({
   -- Path to the trev binary
   trev_path = "trev",
+  -- Extra CLI arguments for trev (e.g. {"--config", "path/to/config.yml", "--icons"})
+  args = {},
   -- Side panel width (columns)
   width = 60,
   -- Floating window dimensions (only applied for native adapter by default)

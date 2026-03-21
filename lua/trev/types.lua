@@ -11,6 +11,7 @@
 
 --- @class trev.Config
 --- @field trev_path string trev binary path
+--- @field args string[] extra CLI arguments for trev (e.g. {"--config", "path/to/config.yml", "--icons"})
 --- @field side trev.Side panel side ("left" or "right")
 --- @field width number side panel width (columns)
 --- @field float trev.FloatConfig floating window config
@@ -27,6 +28,7 @@
 
 --- @class trev.UserConfig
 --- @field trev_path? string
+--- @field args? string[]
 --- @field side? trev.Side
 --- @field width? number
 --- @field float? trev.FloatConfig

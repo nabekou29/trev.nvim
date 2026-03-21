@@ -53,6 +53,11 @@ local function build_cmd(dir, reveal_path)
   local s = state.get()
   local cmd = { cfg.trev_path, "--ipc", dir }
 
+  -- Extra user-defined arguments
+  for _, arg in ipairs(cfg.args) do
+    table.insert(cmd, arg)
+  end
+
   -- Reveal file on startup
   if reveal_path and reveal_path ~= "" then
     table.insert(cmd, "--reveal")

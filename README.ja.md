@@ -50,6 +50,8 @@ trev 本体の詳細（機能、インストール、デーモンの設定など
 require("trev").setup({
   -- trev バイナリのパス
   trev_path = "trev",
+  -- trev に渡す追加の CLI 引数 (例: {"--config", "path/to/config.yml", "--icons"})
+  args = {},
   -- サイドパネルの幅（カラム数）
   width = 60,
   -- フローティングウィンドウのサイズ (native アダプターのみデフォルト適用)
