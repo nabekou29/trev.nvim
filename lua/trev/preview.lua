@@ -305,6 +305,9 @@ function M.show(path, area)
   local width = math.max(1, math.min(area.width - 2, trev_width - col))
   local height = math.max(1, math.min(area.height - 2, trev_height - row))
 
+  local s = state.get()
+  local zindex = (s.mode == "float") and 100 or 1
+
   ensure_win({
     relative = "win",
     win = area.win,
@@ -314,7 +317,7 @@ function M.show(path, area)
     height = height,
     border = "none",
     focusable = false,
-    zindex = 250,
+    zindex = zindex,
   })
 
   -- Scroll to position (for non-debounced updates like scroll changes)
