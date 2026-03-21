@@ -11,16 +11,73 @@ local M = {}
 
 M.actions = require("trev.actions")
 
+--- Minimum required trev CLI version.
+local MIN_VERSION = "0.1.4"
+
 --- @type trev.Adapter|nil
 local adapter = nil
 
 --- @type trev.BindingEntry[]
 local binding_entries = {}
 
+--- Parse a semver string into {major, minor, patch}.
+--- @param version string
+--- @return number[]|nil
+local function parse_version(version)
+  local major, minor, patch = version:match("^(%d+)%.(%d+)%.(%d+)")
+  if not major then
+    return nil
+  end
+  return { tonumber(major), tonumber(minor), tonumber(patch) }
+end
+
+--- Compare two parsed versions. Returns -1, 0, or 1.
+--- @param a number[]
+--- @param b number[]
+--- @return integer
+local function compare_versions(a, b)
+  for i = 1, 3 do
+    if a[i] < b[i] then
+      return -1
+    elseif a[i] > b[i] then
+      return 1
+    end
+  end
+  return 0
+end
+
+--- Check trev CLI version asynchronously and warn if below minimum.
+--- @param trev_path string
+local function check_version(trev_path)
+  vim.system({ trev_path, "--version" }, { text = true }, function(result)
+    if result.code ~= 0 then
+      return
+    end
+    local output = (result.stdout or ""):gsub("%s+$", "")
+    local version_str = output:match("trev%s+(%d+%.%d+%.%d+)")
+    if not version_str then
+      return
+    end
+    local current = parse_version(version_str)
+    local minimum = parse_version(MIN_VERSION)
+    if current and minimum and compare_versions(current, minimum) < 0 then
+      vim.schedule(function()
+        vim.notify(
+          ("[trev] trev %s is below the minimum required version %s. Please upgrade."):format(version_str, MIN_VERSION),
+          vim.log.levels.WARN
+        )
+      end)
+    end
+  end)
+end
+
 --- @param opts? trev.UserConfig
 function M.setup(opts)
   config.apply(opts)
   local cfg = config.get()
+
+  -- Check trev CLI version
+  check_version(cfg.trev_path)
 
   -- Merge default keybindings with user keybindings
   local merged_keybindings = keybindings.merge(cfg.default_keybindings, cfg.keybindings)
