@@ -5,10 +5,7 @@ local defaults = {
   trev_path = "trev",
   side = "left",
   width = 60,
-  float = {
-    width = 0.6,
-    height = 0.7,
-  },
+  float = {},
   auto_reveal = true,
   default_keybindings = true,
   adapter = "auto",
@@ -54,8 +51,8 @@ function M.validate(config)
   })
 
   vim.validate({
-    ["float.width"] = { config.float.width, "number" },
-    ["float.height"] = { config.float.height, "number" },
+    ["float.width"] = { config.float.width, { "number", "nil" } },
+    ["float.height"] = { config.float.height, { "number", "nil" } },
   })
 end
 

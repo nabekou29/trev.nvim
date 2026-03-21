@@ -22,8 +22,8 @@
 --- @field keybindings table<string, trev.KeybindingValue|false> keybinding definitions (false to disable)
 
 --- @class trev.FloatConfig
---- @field width number fraction of editor width (0.0-1.0) or absolute columns
---- @field height number fraction of editor height (0.0-1.0) or absolute rows
+--- @field width? number fraction of editor width (0.0-1.0) or absolute columns
+--- @field height? number fraction of editor height (0.0-1.0) or absolute rows
 
 --- @class trev.UserConfig
 --- @field trev_path? string

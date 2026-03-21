@@ -21,9 +21,7 @@ end
 --- @type table|nil
 local term = nil
 
---- Resolve float_opts from trev.FloatConfig.
---- @param float_config trev.FloatConfig
---- @return table
+--- Resolve a single dimension value for toggleterm float_opts.
 --- @param value number
 --- @param total_fn fun(): number
 --- @return number|fun(): number
@@ -36,12 +34,18 @@ local function resolve_size(value, total_fn)
   return math.floor(value)
 end
 
+--- Build float_opts from trev.FloatConfig. Returns nil when no size is specified.
+--- @param float_config trev.FloatConfig
+--- @return table|nil
 local function make_float_opts(float_config)
-  return {
-    width = resolve_size(float_config.width, function() return vim.o.columns end),
-    height = resolve_size(float_config.height, function() return vim.o.lines - vim.o.cmdheight end),
-    border = "rounded",
-  }
+  local opts = { border = "rounded" }
+  if float_config.width then
+    opts.width = resolve_size(float_config.width, function() return vim.o.columns end)
+  end
+  if float_config.height then
+    opts.height = resolve_size(float_config.height, function() return vim.o.lines - vim.o.cmdheight end)
+  end
+  return opts
 end
 
 --- Create and open a new toggleterm Terminal.
@@ -67,7 +71,7 @@ local function create_and_open(cmd, direction, opts)
   if direction == "vertical" then
     term_opts.size = opts.width or 30
   elseif direction == "float" then
-    term_opts.float_opts = make_float_opts(opts.float or { width = 0.6, height = 0.7 })
+    term_opts.float_opts = make_float_opts(opts.float or {})
   end
 
   term = Terminal:new(term_opts)
@@ -129,7 +133,7 @@ function ToggletermAdapter:show(handle, mode, opts)
 
   if mode == "float" then
     term.direction = "float"
-    term.float_opts = make_float_opts(opts.float or { width = 0.6, height = 0.7 })
+    term.float_opts = make_float_opts(opts.float or {})
   else
     term.direction = "vertical"
     term.size = opts.width or 30

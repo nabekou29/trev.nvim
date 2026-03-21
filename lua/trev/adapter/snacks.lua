@@ -24,13 +24,18 @@ local term = nil
 --- @return table
 local function make_win_config(mode, opts)
   if mode == "float" then
-    local float = opts.float or { width = 0.6, height = 0.7 }
-    return {
+    local float = opts.float or {}
+    local win = {
       position = "float",
-      width = float.width,
-      height = float.height,
       border = "rounded",
     }
+    if float.width then
+      win.width = float.width
+    end
+    if float.height then
+      win.height = float.height
+    end
+    return win
   else
     return {
       position = opts.side or "left",

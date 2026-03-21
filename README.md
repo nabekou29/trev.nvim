@@ -10,7 +10,7 @@ For detailed information about trev itself (features, installation, configuratio
 
 ## Requirements
 
-- Neovim
+- Neovim >= 0.10.0
 - [trev](https://github.com/nabekou29/trev)
 
 ## Installation
@@ -52,10 +52,10 @@ require("trev").setup({
   trev_path = "trev",
   -- Side panel width (columns)
   width = 60,
-  -- Floating window dimensions
+  -- Floating window dimensions (only applied for native adapter by default)
   float = {
-    width = 0.6,  -- fraction of editor width (0.0-1.0) or absolute columns
-    height = 0.7, -- fraction of editor height (0.0-1.0) or absolute rows
+    width = 0.8,  -- fraction of editor width (0.0-1.0) or absolute columns (native default: 0.8)
+    height = 0.8, -- fraction of editor height (0.0-1.0) or absolute rows (native default: 0.8)
   },
   -- Automatically reveal the current buffer in the tree on BufEnter
   auto_reveal = true,

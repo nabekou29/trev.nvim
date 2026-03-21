@@ -49,8 +49,8 @@ local function make_float_config(float_config)
   local editor_width = vim.o.columns
   local editor_height = vim.o.lines - vim.o.cmdheight
 
-  local width = float_config.width
-  local height = float_config.height
+  local width = float_config.width or 0.8
+  local height = float_config.height or 0.8
 
   -- Convert fractions to absolute values
   if width > 0 and width <= 1 then
@@ -131,7 +131,7 @@ end
 --- @return trev.AdapterHandle|nil
 function NativeAdapter:open_float(cmd, opts)
   local buf = vim.api.nvim_create_buf(false, true)
-  local win_config = make_float_config(opts.float or { width = 0.6, height = 0.7 })
+  local win_config = make_float_config(opts.float or {})
   local win = vim.api.nvim_open_win(buf, true, win_config)
 
   setup_term_buf(buf)
@@ -188,7 +188,7 @@ function NativeAdapter:show(handle, mode, opts)
   end
 
   if mode == "float" then
-    local win_config = make_float_config(opts.float or { width = 0.6, height = 0.7 })
+    local win_config = make_float_config(opts.float or {})
     local win = vim.api.nvim_open_win(handle.buf, true, win_config)
     handle.win = win
   else
