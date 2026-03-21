@@ -28,6 +28,7 @@ local DEBOUNCE_MS = 16
 --- @field path string|nil currently previewed file path
 --- @field owns_buf boolean whether we created a scratch buffer
 --- @field pending_timer userdata|nil debounce timer
+--- @field trev_active boolean whether trev is showing a preview (any provider)
 
 --- @type trev.PreviewState
 local preview = {
@@ -36,6 +37,7 @@ local preview = {
   path = nil,
   owns_buf = false,
   pending_timer = nil,
+  trev_active = false,
 }
 
 --- Handle preview notification from trev.
@@ -49,8 +51,10 @@ function M.on_preview(params)
     return
   end
 
+  preview.trev_active = params.path ~= nil and params.path ~= ""
+
   -- Hide preview (only show for Neovim provider)
-  if not params.path or params.path == "" or params.provider ~= "Neovim" then
+  if not preview.trev_active or params.provider ~= "Neovim" then
     M.hide()
     return
   end
@@ -333,6 +337,12 @@ function M.show(path, area)
   end
 end
 
+--- Check if trev is showing a preview (any provider).
+--- @return boolean
+function M.is_trev_active()
+  return preview.trev_active
+end
+
 --- Hide the preview overlay.
 function M.hide()
   cancel_pending()
@@ -342,6 +352,7 @@ function M.hide()
   end
   preview.win = nil
   preview.path = nil
+  preview.trev_active = false
   release_buf()
 end
 

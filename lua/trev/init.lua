@@ -155,6 +155,8 @@ local function start_instance(mode, dir, reveal_path)
       s.mode = mode
       s.dir = dir
 
+      M._setup_preview_auto_hide()
+
       -- Connect IPC via socket discovery
       if handle.pid then
         socket.find_for_pid(handle.pid, function(socket_path)
@@ -175,6 +177,51 @@ local function start_instance(mode, dir, reveal_path)
   else
     adapter:open_panel(cmd, opts)
   end
+end
+
+--- Set up autocmds to hide/show preview when focus leaves/enters trev.
+function M._setup_preview_auto_hide()
+  local cfg = config.get()
+  if not cfg.neovim_preview or not cfg.neovim_preview.enabled then
+    return
+  end
+
+  local s = state.get()
+  if not s.handle or not s.handle.buf then
+    return
+  end
+
+  local augroup = vim.api.nvim_create_augroup("TrevPreviewAutoHide", { clear = true })
+
+  local was_preview_visible = false
+
+  vim.api.nvim_create_autocmd("BufLeave", {
+    group = augroup,
+    buffer = s.handle.buf,
+    callback = function()
+      local preview = require("trev.preview")
+      was_preview_visible = preview.is_trev_active()
+      if was_preview_visible and ipc.is_connected() then
+        ipc.send_notification("action", { name = "preview.hide_preview" })
+      end
+      preview.hide()
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("BufEnter", {
+    group = augroup,
+    buffer = s.handle.buf,
+    callback = function()
+      if was_preview_visible and ipc.is_connected() then
+        ipc.send_notification("action", { name = "preview.show_preview" })
+        ipc.send_request("get_state", nil, function(result)
+          if result and result.preview then
+            require("trev.preview").on_preview(result.preview)
+          end
+        end)
+      end
+    end,
+  })
 end
 
 --- Set up autocmd to close float when focus leaves.
