@@ -31,6 +31,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
       -- Open file in a window selected with chowcho.nvim
       -- ["<S-CR>"] = {
       --   action = function(event)
+      --     require("trev").close()
       --     require("chowcho").run(function(winid)
       --       vim.api.nvim_set_current_win(winid)
       --       vim.cmd("edit " .. vim.fn.fnameescape(event.current_file))

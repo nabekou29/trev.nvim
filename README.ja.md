@@ -31,6 +31,7 @@ trev 本体の詳細（機能、インストール、デーモンの設定など
       -- chowcho.nvim を使ってウィンドウを選択してファイルを開く
       -- ["<S-CR>"] = {
       --   action = function(event)
+      --     require("trev").close()
       --     require("chowcho").run(function(winid)
       --       vim.api.nvim_set_current_win(winid)
       --       vim.cmd("edit " .. vim.fn.fnameescape(event.current_file))
