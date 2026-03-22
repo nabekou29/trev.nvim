@@ -3,7 +3,6 @@
 
 --- @alias trev.Position "panel" | "float"
 --- @alias trev.Side "left" | "right"
---- @alias trev.OpenAction "edit" | "split" | "vsplit" | "tabedit"
 
 --- @class trev.NeovimPreviewConfig
 --- @field enabled boolean enable Neovim preview overlay
@@ -78,6 +77,14 @@
 --- @field description? string
 --- @field action fun(e: trev.KeybindingEvent)
 --- @field context? string[] contexts ("file", "directory", "universal")
+
+--- Predefined action returned by actions.open(), actions.quit(), etc.
+--- @class trev.Action
+--- @field _trev_action true sentinel for type checking
+--- @field _type "notify"|"action" notify = IPC to Neovim, action = trev internal
+--- @field _value string method name or trev action name
+--- @field description? string
+--- @field context string[] contexts ("file", "directory", "universal")
 
 --- Keybinding config value: a single Action, list of Actions, or a custom KeybindingDef
 --- @alias trev.KeybindingValue trev.Action | trev.Action[] | trev.KeybindingDef
