@@ -318,6 +318,14 @@ function M._setup_auto_reveal()
       if not ipc.is_connected() then
         return
       end
+      -- Only reveal when the trev window is visible but not focused
+      -- (e.g. preview buffer swaps can trigger BufEnter while focus is in trev).
+      if not s.handle or not s.handle.win or not vim.api.nvim_win_is_valid(s.handle.win) then
+        return
+      end
+      if vim.api.nvim_get_current_win() == s.handle.win then
+        return
+      end
       if M._is_special_buffer(ev.buf) then
         return
       end
