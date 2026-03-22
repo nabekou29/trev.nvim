@@ -14,7 +14,7 @@ M.actions = require("trev.actions")
 --- Minimum required trev CLI version.
 local MIN_VERSION = "0.1.5"
 
---- @type trev.Adapter|nil
+--- @type trev.Adapter
 local adapter = nil
 
 --- @type trev.BindingEntry[]
@@ -101,10 +101,9 @@ function M.setup(opts)
 end
 
 --- Build the command line for trev.
---- @param dir string workspace directory
---- @return string[]
 --- @param dir string
 --- @param reveal_path? string file path to reveal on startup
+--- @return string[]
 local function build_cmd(dir, reveal_path)
   local cfg = config.get()
   local s = state.get()
@@ -274,12 +273,28 @@ function M._on_ipc_connect()
     end
   end
 
-  -- Sync initial state (preview, etc.)
-  ipc.send_request("get_state", nil, function(result)
-    if result and result.preview then
-      require("trev.preview").on_preview(result.preview)
+  -- Sync initial state (preview, etc.) with retry.
+  -- trev may not have finished initialising the preview for the first file
+  -- by the time IPC connects, so retry a few times if preview data is absent.
+  local max_sync_attempts = 5
+  local sync_interval_ms = 100
+
+  local function sync_initial_preview(attempt)
+    if not ipc.is_connected() then
+      return
     end
-  end)
+    ipc.send_request("get_state", nil, function(result)
+      if result and result.preview and result.preview.path and result.preview.path ~= "" then
+        require("trev.preview").on_preview(result.preview)
+      elseif attempt < max_sync_attempts then
+        vim.defer_fn(function()
+          sync_initial_preview(attempt + 1)
+        end, sync_interval_ms)
+      end
+    end)
+  end
+
+  sync_initial_preview(1)
 end
 
 --- Set up BufEnter autocmd for auto-reveal.

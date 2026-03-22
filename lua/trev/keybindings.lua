@@ -135,10 +135,12 @@ function M.generate_preview_yaml(preview_config)
   -- Disable built-in Text provider (replaced by Neovim overlay)
   table.insert(lines, "    - name: Text")
   table.insert(lines, "      enabled: false")
-  -- Use `cat` so trev has the full file content for scroll tracking.
-  -- The output is hidden behind the Neovim preview overlay.
+  -- Output empty lines (same line count) so trev can track scroll position
+  -- without rendering visible text behind the Neovim preview overlay.
+  -- trev executes commands directly (no shell), so args are passed as-is.
   table.insert(lines, "    - name: Neovim")
-  table.insert(lines, '      command: cat')
+  table.insert(lines, "      command: awk")
+  table.insert(lines, '      args: [\'{print \"\"}\']')
   table.insert(lines, "      pattern:")
   table.insert(lines, '        - "*"')
 
